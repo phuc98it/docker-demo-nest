@@ -1,0 +1,104 @@
+=== Dockerfile ===
+- để đóng gói project.
+- định nghĩa nơi làm việc. 
+- install version lightweight and buid.
+- Đánh dấu --tag -> chính là đặt tên image cho Project.
+=> Tạo ra 'image' và generate how to build.
+
+
+=== Docker Compose ===
+- Định nghĩa các Image cho project.
+- Run image project chỉ đinh -> correct.
+
+=> Dockerfile -> Docker Compose
+
+
+=== Auto build Image Docker ===
+- docker-compose up --build : tự động rebuild lại process.
+    +) setup : nestjs-api:      (update trong docker-compose)
+                build:
+                  context: .
+- Tăng tốc độ build, giảm tải khối lượng lớn thời gian = cách :
+    +) Tách biệt quá trình "install dependencies" và "build"
+    +) Đặt "RUN npm ci –omit=dev" lên trước "COPY . .",
+        vì vậy phải thực hiện "COPY package.json package-lock.json ./" trước tiên 
+        -> để hệ thống nhận biến những dependcies mới đc thêm vào.
+    +) Cấu trúc lại Dockerfile theo khái niệm 'stage' : tách thành 2 phần 'development' và 'production'.
+        (lưu ý: quá trình này sẽ chỉ có duy nhất : node_modules, dist, and package.json)
+    
+    => Giải quyết được 1 số vấn đề : bỏ qua những thứ không cần thiết và khi build chỉ tập trung vào những tệp thay đổi cần thiết.
+
+
+
+Dockerfile :
+
+# Installing dependencies:
+ 
+FROM node:18-alpine AS install-dependencies
+ 
+WORKDIR /user/src/app
+ 
+COPY package.json package-lock.json ./
+ 
+RUN npm ci --omit=dev
+ 
+COPY . .
+ 
+ 
+# Creating a build:
+ 
+FROM node:18-alpine AS create-build
+ 
+WORKDIR /user/src/app
+ 
+COPY --from=install-dependencies /user/src/app ./
+ 
+RUN npm run build
+ 
+USER node
+ 
+ 
+# Running the application:
+ 
+FROM node:18-alpine AS run
+ 
+WORKDIR /user/src/app
+ 
+COPY --from=install-dependencies /user/src/app/node_modules ./node_modules
+COPY --from=create-build /user/src/app/dist ./dist
+COPY package.json ./
+ 
+CMD ["npm", "run", "start:prod"]
+
+
+=> stage 1: install-dependencies - đảm nhận trách nhiệm reinstall dependencies -> /node_modules
+=> stage 2: create-build - đảm nhận trách nhiệm rebuild source code -> /disk
+
+*) Update docker-compose : ->  target a specific stage.
+services:
+  nestjs-api:
+    build:
+      context: .
+      target: install-dependencies
+    command: npm run start:dev              => chạy Local  ^^ (xịn)
+    volumes:
+      - ./src:/user/src/app/src             => Khai báo nơi chứa là ./src : dữ liệu đồng bộ từ /user/src/app/src trong docker container.
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - postgres
+
+=> Volumes: - ./folder : ./forder-in-docker-container
+
+
+
+// Ngoài lề migration :
+
+docker compose up
+    docker-compose exec backend sh // used for going inside the docker container and seed the database
+    npm run migrate
+    npm run seed:users
