@@ -102,3 +102,9 @@ docker compose up
     docker-compose exec backend sh // used for going inside the docker container and seed the database
     npm run migrate
     npm run seed:users
+
+*) build và đóng gói - rồi đặt tên 'image' =  tag: docker build --tag "nestjs-api" .
+
+
+  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+  migrations: [__dirname + '/../migrations/*{.ts,.js}'],

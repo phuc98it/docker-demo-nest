@@ -1,23 +1,31 @@
 version: "3"
 services:
   postgres:
+    container_name: postgres
     image: postgres:15.1
-    networks:
-      - postgres
+    ports:
+    - "5432:5432"
     env_file:
-      - docker.env
+    - docker.env
+    networks:
+    - postgres
 
   pgadmin:
-    image: dpage/pgadmin4:6.18
-    networks:
-      - postgres
+    links:
+    - postgres:postgres
+    container_name: pgadmin
+    image: dpage/pgadmin4
     ports:
-      - "8080:80"
+    - "8080:80"
     env_file:
-      - docker.env
+    - docker.env
+    networks:
+    - postgres
 
   nestjs-api:
-    image: nestjs-api
+    build:
+      context: .
+    command: sh -c "npm run typeorm:run-migrations && npm run start:dev"
     env_file:
       - .env
     ports:
