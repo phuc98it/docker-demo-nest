@@ -5,27 +5,26 @@ services:
     image: postgres:15.1
     ports:
     - "5432:5432"
-    env_file:
-    - docker.env
     networks:
-    - postgres
-
+      - postgres
+    env_file:
+      - docker.env
+ 
   pgadmin:
-    links:
-    - postgres:postgres
     container_name: pgadmin
-    image: dpage/pgadmin4
-    ports:
-    - "8080:80"
-    env_file:
-    - docker.env
+    image: dpage/pgadmin4:6.18
     networks:
-    - postgres
-
+      - postgres
+    ports:
+      - "8080:80"
+    env_file:
+      - docker.env
+ 
   nestjs-api:
     build:
       context: .
-    command: sh -c "npm run typeorm:run-migrations && npm run start:dev"
+      target: create-build
+    command: npm run typeorm:migrate
     env_file:
       - .env
     ports:
